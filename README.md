@@ -84,7 +84,8 @@ func main() {
 	// delete value from cache
 	cache.Delete("key")
 }
+```
 
 ## Main.go
 
-`main.go` has some experimentation on how to use this cache associated with emission API
+`main.go` has some play-around on using the cache associated with measurement API.
