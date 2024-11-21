@@ -11,33 +11,32 @@ import (
 
 type Config struct {
 
-	// max cost describes the maximum cost the cache can hold, it can be any arbitrary number
+	// MaxCost the maximum cost the cache can hold, it can be any arbitrary number
 	// the cost can be your estimation of the memory usage of the cached item
 	// the cost can be the weight or deemed value of the cached item
 	// it is the only way you manage the size of the cache
 	MaxCost int
 
-	// num shards describes the number of shards for the cache, more shards means less contention in setting and getting the items
-	// but it can also introduce more memory overhead
-	// suggest using the default value which is also the default of the original ristretto cache
+	// NumShards describes the number of shards for the cache, more shards means less contention in setting and getting the items
+	// but it can also introduce more overhead
+	// suggestion - use number that is a power of 2
 	NumShards uint64
 
-	// max set buffer size describes the maximum number of items can live in the buffer at once waiting to be added or removed
-	// if the buffer is full, the Put operation will be contested and blocked, a large buffer size can reduce contention
-	// but it can also introduce more memory overhead
-	// suggest using the default value  which is also the default of the original ristretto cache
+	// MaxSetBufferSize describes the maximum number of items can live in the buffer at once waiting to be added or removed
+	// if the buffer is full, the Put operation will be contested and will fail, a large buffer size can reduce contention but can also add more memory overhead
 	MaxSetBufferSize int
 
-	// cleanup interval milliseconds describes the interval in milliseconds to run the cleanup operation to clean up items that are expired
+	// CleanupIntervalMilli describes the interval in milliseconds to run the cleanup operation to clean up items that are expired
+	// The lower the value, the more frequent the cleanup operation will run while it can also introduce delay in the processing of setting and removing items.
 	CleanupIntervalMilli int
 }
 
 func DefaultConfig() Config {
 	return Config{
 		MaxCost:              1 << 30,   // 1GB
-		NumShards:            256,       // - the number of shards for the cache
+		NumShards:            256,       // the number of shards for the cache
 		MaxSetBufferSize:     32 * 1024, // 32768, the number of items can live in the buffer at once waiting to be added or removed
-		CleanupIntervalMilli: 60000,     // 60 seconds
+		CleanupIntervalMilli: 10000,     // 10 seconds
 	}
 }
 
@@ -61,7 +60,7 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// Cache is a concurrent safe cache that supports Put, Get, Remove, and Wait operations
+// Cache is a concurrent safe cache that supports Put, Get, Remove, and Wait operations in large scale
 type Cache[V any] struct {
 	conf Config
 
@@ -78,6 +77,7 @@ type Cache[V any] struct {
 	isClosed atomic.Bool
 }
 
+// NewCache creates a new cache with the given configuration
 func NewCache[V any](conf Config) (*Cache[V], error) {
 	if err := conf.Validate(); err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func (c *Cache[V]) Put(key string, value V, cost int, ttlMillis int) bool {
 
 // Get returns the value of the key if it exists in the cache immediately without blocking, it runs in O(1) time complexity
 // it returns the value and true if the key exists, otherwise it returns nil and false
-// it will return the value even if the value is expired, let the consumer decide what to do with the expired value
+// it will return the value even if the value is expired since the cache design believes that the consumer should decide what to do with the expired value
 func (c *Cache[V]) Get(key string) (V, bool) {
 	if c == nil || c.isClosed.Load() {
 		return zeroValue[V](), false
@@ -224,7 +224,7 @@ func (c *Cache[V]) processItems() {
 	}
 }
 
-// Clear clears the cache,  it stops the background processing
+// Clear clears the cache and stops the background processing
 // during the clearance it is suggested that user should not call Put, Get, Remove, Wait operations to avoid delay in the clearance
 func (c *Cache[V]) Clear() {
 	if c == nil || c.isClosed.Load() {

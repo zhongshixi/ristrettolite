@@ -22,7 +22,8 @@ func newEvictionPolicy[V any](maxCost int) *evictionPolicy[V] {
 	}
 }
 
-func (ep *evictionPolicy[V]) _update(item *Item[V]) ([]*Item[V], bool) {
+// update updates the item in the eviction policy and returns the evicted items and whether the item is inserted or not
+func (ep *evictionPolicy[V]) update(item *Item[V]) ([]*Item[V], bool) {
 	prevItem, ok := ep.itemTracker[item.Key]
 	if ok {
 
@@ -60,6 +61,9 @@ func (ep *evictionPolicy[V]) _update(item *Item[V]) ([]*Item[V], bool) {
 	return nil, false
 }
 
+// Insert insert the item into the eviction policy and return items evicted and whether the item is inserted or not
+// if the item is not inserted, it will return false
+// if the item tries to be inserted and get evicted immediately, it will return the item in the evicted items and false
 func (ep *evictionPolicy[V]) Insert(item *Item[V]) ([]*Item[V], bool) {
 	if item == nil {
 		return nil, false
@@ -71,7 +75,7 @@ func (ep *evictionPolicy[V]) Insert(item *Item[V]) ([]*Item[V], bool) {
 
 	_, ok := ep.itemTracker[item.Key]
 	if ok {
-		return ep._update(item)
+		return ep.update(item)
 	}
 
 	evictedItems := make([]*Item[V], 0)
@@ -93,6 +97,7 @@ func (ep *evictionPolicy[V]) Insert(item *Item[V]) ([]*Item[V], bool) {
 
 }
 
+// evictUntilRoomLeft evicts items until the current cost is less than the max cost
 func (ep *evictionPolicy[V]) evictUntilRoomLeft() []*Item[V] {
 	evicted := make([]*Item[V], 0)
 	for ep.curCost > ep.maxCost {
@@ -109,6 +114,7 @@ func (ep *evictionPolicy[V]) evictUntilRoomLeft() []*Item[V] {
 	return evicted
 }
 
+// Remove removes the item from the eviction policy and returns the item and whether the item is removed or not
 func (ep *evictionPolicy[V]) Remove(key uint64) (*Item[V], bool) {
 	item, ok := ep.itemTracker[key]
 	if !ok {
@@ -120,6 +126,7 @@ func (ep *evictionPolicy[V]) Remove(key uint64) (*Item[V], bool) {
 	return item, true
 }
 
+// EvictExpiredItems evicts all the items that have expired before the given timestamp
 func (ep *evictionPolicy[V]) EvictExpiredItems(ts time.Time) []*Item[V] {
 	evicted := make([]*Item[V], 0)
 
@@ -137,16 +144,20 @@ func (ep *evictionPolicy[V]) EvictExpiredItems(ts time.Time) []*Item[V] {
 	return evicted
 }
 
-// reset the eviction policy by reinitializing the cost queue and item tracker and lets GC handle the rest
+// Clear resets the eviction policy by reinitializing the cost queue and item tracker and lets GC handle the rest
 func (ep *evictionPolicy[V]) Clear() {
+	// Note: GC may be slow depending on the size of the map
 	ep.costQueue = &CostPriorityQueue[V]{}
 	ep.itemTracker = make(map[uint64]*Item[V])
 	ep.curCost = 0
 }
 
+// Size returns the number of items in the eviction policy
 func (ep *evictionPolicy[V]) Size() int {
 	return len(ep.itemTracker)
 }
+
+// Cost returns the current cost of the eviction policy
 func (ep *evictionPolicy[V]) Cost() int {
 	return ep.curCost
 }

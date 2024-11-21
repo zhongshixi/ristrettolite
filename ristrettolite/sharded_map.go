@@ -1,16 +1,11 @@
 package ristrettolite
 
-import (
-	"sync"
-)
-
 // shardedMap is a map that is sharded into multiple locked maps
 //
 // in high-concurrency scenarios, instead of using one map and one lock, by sharding the map into multiple locked maps,
-// we can use lock for each sharded map, thus when multiple set/get/delete operations are happening on different keys, they are less likely
+// we can use lock for each sharded map, thus when multiple put/get/remove operations are happening on different keys, they are less likely
 // to block each other, thus reducing contention
 type shardedMap[V any] struct {
-	sync.RWMutex
 	shards []*lockedMap[V]
 
 	numShards uint64

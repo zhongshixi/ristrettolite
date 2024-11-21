@@ -13,7 +13,7 @@ it is highly recommended to use the cache in large scale scenario while get oper
 
 * **Fully Concurrent** - you can use as many goroutine as you want with little throughput degradation.
 
-* **Simple API** -  it has standard cache interfaces like `Set`, `Get`, `Delete`, `Clear`.it offers control workflow interface like `Wait` and `Close`. It also provides stats interface like `Size` and `Cost`.
+* **Simple API** -  it has standard cache interfaces like `Put`, `Get`, `Remove`, `Clear`.it offers control workflow interface like `Wait` and `Close`. It also provides stats interface like `Size` and `Cost`.
 
 
 ## Config File
@@ -21,24 +21,25 @@ it is highly recommended to use the cache in large scale scenario while get oper
 
 type Config struct {
 
-	// max cost describes the maximum cost the cache can hold, it can be any arbitrary number
+	// MaxCost describes the maximum cost the cache can hold, it can be any arbitrary number
 	// the cost can be your estimation of the memory usage of the cached item
 	// the cost can be the weight or deemed value of the cached item
 	// it is the only way you manage the size of the cache
 	MaxCost int
 
-	// num shards describes the number of shards for the cache, more shards means less contention in setting and getting the items
-	// but it can also introduce more memory overhead
-	// suggest using the default value which is also the default of the original ristretto cache
+	// NumShards describes the number of shards for the cache, more shards means less contention in setting and getting the items in high concurrency scenario, but it can also introduce overhead
+	// suggestion: using the default value
 	NumShards uint64
 
-	// max set buffer size describes the maximum number of items can live in the buffer at once waiting to be added or removed
+	// MaxSetBufferSize buffer size describes the maximum number of items can live in the buffer at once waiting to be added or removed
 	// if the buffer is full, the Put operation will be contested and blocked, a large buffer size can reduce contention
-	// but it can also introduce more memory overhead
-	// suggest using the default value  which is also the default of the original ristretto cache
+	// but it can also introduce overhead in memory footprint
+	// suggestion: using the default value
 	MaxSetBufferSize int
 
-	// cleanup interval milliseconds describes the interval in milliseconds to run the cleanup operation to clean up items that are expired
+	// CleanupIntervalMilli describes the interval in milliseconds to run the cleanup operation to clean up items that are expired
+	// lower interval means higher rate of inspecting and evicting expired item and potentially more, also potentially delaying the process of putting and removing operation.
+	// suggestion: do not set it too
 	CleanupIntervalMilli int
 }
 

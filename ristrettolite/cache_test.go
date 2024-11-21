@@ -62,6 +62,16 @@ func TestCache_PutAndGet(t *testing.T) {
 		val, ok = cache.Get("key1")
 		assert.False(t, ok, "Get should failed since the item is expired")
 		assert.Equal(t, "", val, "Get should return the correct empty value")
+
+		success = cache.Put("key2", "value2", 10, 1)
+		assert.True(t, success, "Put should succeed")
+
+		cache.Wait()
+
+		val, ok = cache.Get("key2")
+		assert.True(t, ok, "Get should succeed for an existing key")
+		assert.Equal(t, "value2", val, "Get should return the correct value")
+
 	})
 
 	t.Run("Put and close", func(t *testing.T) {
