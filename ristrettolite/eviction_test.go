@@ -201,7 +201,7 @@ func TestEvictionPolicy_Remove(t *testing.T) {
 		expectedCost            int
 	}{
 		{
-			name:    "Insert two items and remove one",
+			name:    "Insert two items and delete one",
 			maxCost: 100,
 			InsertItems: []*Item[string]{
 				{
@@ -233,7 +233,7 @@ func TestEvictionPolicy_Remove(t *testing.T) {
 			}
 
 			for _, key := range tt.RemoveKeys {
-				ep.Remove(key)
+				ep.Delete(key)
 			}
 
 			// Check the cost
@@ -258,7 +258,7 @@ func TestEvictionPolicy_EvictExpiredItem(t *testing.T) {
 		expectedCost            int
 	}{
 		{
-			name:       "Insert two items and remove one",
+			name:       "Insert two items and delete one",
 			maxCost:    100,
 			ExpireTime: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC),
 			InsertItems: []*Item[string]{

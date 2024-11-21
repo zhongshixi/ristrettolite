@@ -114,8 +114,8 @@ func (ep *evictionPolicy[V]) evictUntilRoomLeft() []*Item[V] {
 	return evicted
 }
 
-// Remove removes the item from the eviction policy and returns the item and whether the item is removed or not
-func (ep *evictionPolicy[V]) Remove(key uint64) (*Item[V], bool) {
+// Delete removes the item from the eviction policy and returns the item and whether the item is removed or not
+func (ep *evictionPolicy[V]) Delete(key uint64) (*Item[V], bool) {
 	item, ok := ep.itemTracker[key]
 	if !ok {
 		return nil, false

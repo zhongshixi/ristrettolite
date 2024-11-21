@@ -19,15 +19,15 @@ type Stats struct {
 	CacheHit  atomic.Int64
 	CacheMiss atomic.Int64
 
-	CachePutSuccess atomic.Int64
-	CachePutFailed  atomic.Int64
+	CacheSetSuccess atomic.Int64
+	CacheSetFailed  atomic.Int64
 
 	RequestSuccess atomic.Int64
 	RequestFailed  atomic.Int64
 }
 
 func (c *Stats) String() string {
-	return fmt.Sprintf("cache hit: %d, cache miss: %d, cache put success: %d, cache put failed: %d, request success: %d, request failed: %d", c.CacheHit.Load(), c.CacheMiss.Load(), c.CachePutSuccess.Load(), c.CachePutFailed.Load(), c.RequestSuccess.Load(), c.RequestFailed.Load())
+	return fmt.Sprintf("cache hit: %d, cache miss: %d, cache set success: %d, cache set failed: %d, request success: %d, request failed: %d", c.CacheHit.Load(), c.CacheMiss.Load(), c.CacheSetSuccess.Load(), c.CacheSetFailed.Load(), c.RequestSuccess.Load(), c.RequestFailed.Load())
 }
 
 func main() {
@@ -83,11 +83,11 @@ func main() {
 
 			for _, row := range payload.Rows {
 				if respRow, ok := reqRowToRespRow[row.RowIdentifier]; ok {
-					success := cache.Put(row.String(), respRow, row.Cost, int(oneDay.Milliseconds()))
+					success := cache.Set(row.String(), respRow, row.Cost, int(oneDay.Milliseconds()))
 					if success {
-						stats.CachePutSuccess.Add(1)
+						stats.CacheSetSuccess.Add(1)
 					} else {
-						stats.CachePutFailed.Add(1)
+						stats.CacheSetFailed.Add(1)
 					}
 				}
 			}

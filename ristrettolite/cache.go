@@ -23,7 +23,7 @@ type Config struct {
 	NumShards uint64
 
 	// MaxSetBufferSize describes the maximum number of items can live in the buffer at once waiting to be added or removed
-	// if the buffer is full, the Put operation will be contested and will fail, a large buffer size can reduce contention but can also add more memory overhead
+	// if the buffer is full, the set operation will be contested and will fail, a large buffer size can reduce contention but can also add more memory overhead
 	MaxSetBufferSize int
 
 	// CleanupIntervalMilli describes the interval in milliseconds to run the cleanup operation to clean up items that are expired
@@ -60,7 +60,7 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// Cache is a concurrent safe cache that supports Put, Get, Remove, and Wait operations in large scale
+// Cache is a concurrent safe cache that supports Set, Get, Delete, and Wait operations in large scale
 type Cache[V any] struct {
 	conf Config
 
@@ -97,10 +97,10 @@ func NewCache[V any](conf Config) (*Cache[V], error) {
 	return c, nil
 }
 
-// Put returns false if the cost is 0 or ttl is 0 or cache is closed or buffer is full(indicating contention and failed operation)
+// Set returns false if the cost is 0 or ttl is 0 or cache is closed or buffer is full(indicating contention and failed operation)
 // it does not immediately adds a new item to the cache, instead it adds the item to the buffer for background processing, eventually the item will be added to the cache or evicted by the policy
 // it runs in O(1) time complexity
-func (c *Cache[V]) Put(key string, value V, cost int, ttlMillis int) bool {
+func (c *Cache[V]) Set(key string, value V, cost int, ttlMillis int) bool {
 	if c == nil || c.isClosed.Load() {
 		return false
 	}
@@ -120,7 +120,7 @@ func (c *Cache[V]) Put(key string, value V, cost int, ttlMillis int) bool {
 		Value:    value,
 		Cost:     cost,
 		ExpireAt: time.Now().Add(time.Duration(ttlMillis) * time.Millisecond),
-		Action:   ActionPut,
+		Action:   Actionset,
 	}
 
 	select {
@@ -143,9 +143,10 @@ func (c *Cache[V]) Get(key string) (V, bool) {
 	return c.shardedMap.Get(xxhash.Sum64String(key))
 }
 
-// Remove marks the item to be removed from the cache, it does not immediately remove the item from the cache
+// Delete marks the item to be removed from the cache, it does not immediately delete the item from the cache
 // instead it adds the item to the buffer for background processing, eventually the item will be removed from the cache
-func (c *Cache[V]) Remove(key string) {
+// it can be a blocking operation if the set buffer is full
+func (c *Cache[V]) Delete(key string) {
 	if c == nil || c.isClosed.Load() {
 		return
 	}
@@ -192,31 +193,31 @@ func (c *Cache[V]) processItems() {
 					item.WaitGroup.Done()
 				}
 
-			// if the action is put, then insert the item to the cache and evict items if necessary
-			case ActionPut:
+			// if the action is set, then insert the item to the cache and evict items if necessary
+			case Actionset:
 				// figure out if the item can be inserted to the cache or not
 				// the evictedItem could contain the item that was just inserted
 				evictedItems, ok := c.evictionPolicy.Insert(item)
 				if ok {
-					c.shardedMap.Put(item)
+					c.shardedMap.Set(item)
 				}
 				for _, evictedItem := range evictedItems {
-					// if the evicted item is not the same as the item that was just inserted, then remove the evicted item from the cache
+					// if the evicted item is not the same as the item that was just inserted, then delete the evicted item from the cache
 					if evictedItem.Key != item.Key {
-						c.shardedMap.Remove(evictedItem.Key)
+						c.shardedMap.Delete(evictedItem.Key)
 					}
 				}
 			case ActionRemove:
-				_, ok := c.evictionPolicy.Remove(item.Key)
+				_, ok := c.evictionPolicy.Delete(item.Key)
 				if ok {
-					c.shardedMap.Remove(item.Key)
+					c.shardedMap.Delete(item.Key)
 				}
 			}
 
 		case <-c.cleanupTicker.C:
 			evictedItems := c.evictionPolicy.EvictExpiredItems(time.Now())
 			for _, evictedItem := range evictedItems {
-				c.shardedMap.Remove(evictedItem.Key)
+				c.shardedMap.Delete(evictedItem.Key)
 			}
 		case <-c.stopSig:
 			return
@@ -225,7 +226,7 @@ func (c *Cache[V]) processItems() {
 }
 
 // Clear clears the cache and stops the background processing
-// during the clearance it is suggested that user should not call Put, Get, Remove, Wait operations to avoid delay in the clearance
+// during the clearance it is suggested that user should not call set, Get, Delete, Wait operations to avoid delay in the clearance
 func (c *Cache[V]) Clear() {
 	if c == nil || c.isClosed.Load() {
 		return

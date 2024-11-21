@@ -9,7 +9,7 @@ type Action int
 
 const (
 	ActionNone Action = iota
-	ActionPut
+	Actionset
 	ActionRemove
 	ActionWait
 )

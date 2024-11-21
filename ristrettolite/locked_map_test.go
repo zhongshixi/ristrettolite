@@ -8,17 +8,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLockedMap_Put(t *testing.T) {
+func TestLockedMap_set(t *testing.T) {
 	tests := []struct {
 		name        string
-		putItem     *Item[string]
+		setItem     *Item[string]
 		getKey      uint64
 		expectedVal string
 		expectedOk  bool
 	}{
 		{
-			name: "Put valid item",
-			putItem: &Item[string]{
+			name: "set valid item",
+			setItem: &Item[string]{
 				Key:      1,
 				Value:    "value1",
 				Cost:     10,
@@ -29,8 +29,8 @@ func TestLockedMap_Put(t *testing.T) {
 			expectedOk:  true,
 		},
 		{
-			name:        "Put nil item",
-			putItem:     nil,
+			name:        "set nil item",
+			setItem:     nil,
 			getKey:      1,
 			expectedVal: "",
 			expectedOk:  false,
@@ -41,8 +41,8 @@ func TestLockedMap_Put(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := newLockedMap[string]()
 
-			// Perform Put operation
-			m.put(tt.putItem)
+			// Perform set operation
+			m.set(tt.setItem)
 
 			// Test Get
 			val, ok := m.get(tt.getKey)
@@ -63,7 +63,7 @@ func TestLockedMap_Remove(t *testing.T) {
 		expectedOk  bool
 	}{
 		{
-			name: "Remove existing key",
+			name: "Delete existing key",
 			initialData: []*Item[string]{
 				{
 					Key:      1,
@@ -77,7 +77,7 @@ func TestLockedMap_Remove(t *testing.T) {
 			expectedOk:  true,
 		},
 		{
-			name:        "Remove non-existing key",
+			name:        "Delete non-existing key",
 			initialData: nil,
 			removeKey:   2,
 			expectedVal: "",
@@ -91,11 +91,11 @@ func TestLockedMap_Remove(t *testing.T) {
 
 			// Populate initial data
 			for _, item := range tt.initialData {
-				m.put(item)
+				m.set(item)
 			}
 
-			// Perform Remove operation
-			val, ok := m.remove(tt.removeKey)
+			// Perform Delete operation
+			val, ok := m.delete(tt.removeKey)
 
 			// Assertions
 			assert.Equal(t, tt.expectedOk, ok)
@@ -123,7 +123,7 @@ func TestLockedMap_Concurrency(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			m.put(&Item[int]{
+			m.set(&Item[int]{
 				Key:      uint64(i),
 				Value:    i * 10,
 				Cost:     i * 2,
@@ -149,7 +149,7 @@ func TestLockedMap_Concurrency(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			m.remove(uint64(i))
+			m.delete(uint64(i))
 		}(i)
 	}
 

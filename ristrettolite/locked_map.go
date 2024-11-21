@@ -27,7 +27,7 @@ func (m *lockedMap[V]) get(key uint64) (V, bool) {
 	return v.Value, ok
 }
 
-func (m *lockedMap[V]) put(item *Item[V]) {
+func (m *lockedMap[V]) set(item *Item[V]) {
 	if item == nil {
 		return
 	}
@@ -36,7 +36,7 @@ func (m *lockedMap[V]) put(item *Item[V]) {
 	m.data[item.Key] = item
 }
 
-func (m *lockedMap[V]) remove(key uint64) (V, bool) {
+func (m *lockedMap[V]) delete(key uint64) (V, bool) {
 	m.Lock()
 	defer m.Unlock()
 
