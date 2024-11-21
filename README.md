@@ -1,2 +1,2 @@
-# zxcache
-lightweight cache
+# ristrettolite
+light-weight version of ristretto cache
